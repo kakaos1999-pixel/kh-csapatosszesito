@@ -1,40 +1,43 @@
 /*
- * Klán csapatösszesítő  -  v1.1.0
+ * Klán csapatösszesítő  -  v2.0.0
  * ---------------------------------------------------------------------------
- * Mit csinál:  a MÁR MEGNYITOTT csapatáttekintő táblázatát összeadja, és
- *              populáció (farm) alapján kiszámolja, mennyi támadó- és
- *              védősereg-egyenértéke van, plusz hány nemesvonata.
+ * Kinek szól:  KLÁNVEZETŐNEK. A klán csapatáttekintőjén (Klán -> Tagok ->
+ *              Csapatok) a vezető látja a tagok falvait és egységeit. Ez a
+ *              script azt a lapot adja össze helyette - pontosan.
  *
- * Mit NEM csinál:  nem küld sehova semmit, nem kér le egyetlen oldalt sem a
- *              játékból, nem kattint, nem nevez át, nem indít csapatot, nem
- *              reagál semmilyen eseményre, és nem fut magától. Egy kattintás
- *              = egy összesítés a képernyőn. Utána nem csinál többet semmit.
+ * Mit csinál:  a MÁR MEGNYITOTT lap táblázatát összegzi populáció (farm-hely)
+ *              alapján, és kiírja, kinek mennyi a támadó- és védősereg-
+ *              egyenértéke, plusz hány nemesvonata. Tagonként gyűjti: ahogy a
+ *              vezető végigmegy a tagokon, úgy áll össze a klántábla.
  *
- * Miért kell:  a vezetőnek ma kézzel kell összeadnia 12 oszlopot sok száz
- *              soron, vagy a tagok bediktálják a számokat - mindkettő hibázik.
- *              Ez a script ugyanazt az adatot adja össze, ami már ott van a
- *              képernyőn.
+ * Mit NEM csinál:  nem kér le egyetlen oldalt sem a játékból - se másik tag
+ *              lapját, se a következő oldalt. Nem küld sehova semmit, nem
+ *              kattint, nem indít csapatot, nem reagál semmilyen eseményre,
+ *              és nem fut magától. Egy kattintás = egy lap összesítése.
  *
  * Szabály-megfelelés (klanhaboru.hu/page/rules, §6 + Script Szabályok):
  *   - 1 kattintást helyettesít (a kézi összeadást), semmi mást,
  *   - nem küld automatikus információt, és nem reagál a fiók eseményeire,
+ *   - nem nyit meg magától lapokat: amit a vezető nem nyitott meg, azt a
+ *     script sem látja,
  *   - nem nyúl a gyülekezőtérhez, a Támadás/Támogatás/OK gombokhoz,
  *   - nem küld csapatot és nem gyorsítja az egységküldést,
  *   - nem működik együtt a Prémium Tőzsdével és a Farmkezelővel,
  *   - a forráskód nincs elfedve: olvasható, kommentezett, tömörítetlen.
  *
- * A vágólapra másolás CSAK a felhasználó kattintására történik, és a saját
- * gépén marad - a script semmilyen hálózati hívást nem végez.
+ * Az összegyűjtött tábla a böngésző saját tárolójában marad (localStorage),
+ * és a vágólapra másolás is csak kattintásra fut. Hálózati hívás nincs benne.
  *
- * Licenc: szabadon használható és ellenőrizhető.
+ * Licenc: MIT - szabadon használható és ellenőrizhető.
  */
 
 (function () {
   'use strict';
 
   var NEV = 'Klán csapatösszesítő';
-  var VERZIO = '1.1.0';
+  var VERZIO = '2.0.0';
   var TAROLO = 'kcs_beallitasok';
+  var KLAN_TAROLO = 'kcs_klantabla';
 
   /* ---------------------------------------------------------------------
    * 1) Egységadatok
@@ -58,16 +61,16 @@
 
   /* Támadó és védő egységek.
    *
-   * A katapult SZÁNDÉKOSAN csak a támadó oldalon szerepel. Több elterjedt
-   * összesítő mindkét listába beteszi, és így ugyanazt a populációt kétszer
-   * számolja - attól a védőszám felfelé hazudik.
+   * A FELDERÍTŐ egyik oldalon sem szerepel. Ez a legfontosabb különbség a ma
+   * használt összesítőhöz képest: az a felderítő populációját a támadó ÉS a
+   * védő összeghez is hozzáadja, így egy felderítőfalu egyszerre számít fél
+   * nuke-nak és fél védőseregnek. A felderítő nem harcol - sem támadni, sem
+   * védeni nem lehet vele. Külön oszlopban mutatjuk.
    *
-   * A felderítő, a lovag és a nemes egyikbe sem tartozik: a felderítő nem
-   * harcol, a lovag egyedi, a nemes pedig külön számít (vonat). Ezeket külön
-   * soroljuk fel, nem keverjük a sereg-egyenértékbe.
+   * A katapult csak a támadó oldalon van. A lovag és a nemes egyikben sincs:
+   * a lovag egyedi, a nemes külön számít (vonat).
    *
-   * A milícia nem szerepel: nem foglal farmhelyet, tehát populáció alapon
-   * önmagától kimarad. */
+   * A milícia nem foglal farmhelyet, így populáció alapon magától kimarad. */
   var TAMADO = ['axe', 'light', 'marcher', 'ram', 'catapult'];
   var VEDO = ['spear', 'sword', 'archer', 'heavy'];
 
@@ -89,33 +92,43 @@
     sorPozicio: 0
   };
 
-  function beallitasok() {
+  function olvasTarolo(kulcs, alap) {
     try {
-      var mentett = JSON.parse(localStorage.getItem(TAROLO) || '{}');
-      return {
-        nukePop: +mentett.nukePop > 0 ? +mentett.nukePop : ALAP.nukePop,
-        vedoPop: +mentett.vedoPop > 0 ? +mentett.vedoPop : ALAP.vedoPop,
-        nemesVonatonkent: +mentett.nemesVonatonkent > 0 ? +mentett.nemesVonatonkent : ALAP.nemesVonatonkent,
-        sorPozicio: +mentett.sorPozicio > 0 ? +mentett.sorPozicio : ALAP.sorPozicio
-      };
+      var nyers = localStorage.getItem(kulcs);
+      return nyers ? JSON.parse(nyers) : alap;
     } catch (e) {
-      return {
-        nukePop: ALAP.nukePop, vedoPop: ALAP.vedoPop,
-        nemesVonatonkent: ALAP.nemesVonatonkent, sorPozicio: ALAP.sorPozicio
-      };
+      return alap;
     }
   }
 
-  function beallitastMent(b) {
-    try { localStorage.setItem(TAROLO, JSON.stringify(b)); } catch (e) { /* privát ablak */ }
+  function irTarolo(kulcs, ertek) {
+    try { localStorage.setItem(kulcs, JSON.stringify(ertek)); return true; }
+    catch (e) { return false; }
+  }
+
+  function beallitasok() {
+    var m = olvasTarolo(TAROLO, {}) || {};
+    return {
+      nukePop: +m.nukePop > 0 ? +m.nukePop : ALAP.nukePop,
+      vedoPop: +m.vedoPop > 0 ? +m.vedoPop : ALAP.vedoPop,
+      nemesVonatonkent: +m.nemesVonatonkent > 0 ? +m.nemesVonatonkent : ALAP.nemesVonatonkent,
+      sorPozicio: +m.sorPozicio > 0 ? +m.sorPozicio : ALAP.sorPozicio
+    };
+  }
+
+  /** A klántábla: játékosnév -> { falvak: { faluKulcs: egysegek } }. */
+  function klantabla() {
+    var t = olvasTarolo(KLAN_TAROLO, {});
+    return t && typeof t === 'object' ? t : {};
   }
 
   /* ---------------------------------------------------------------------
    * 3) A táblázat megtalálása és az oszlopok beazonosítása
    *
    * Az egységeket a fejléc KÉPEIRŐL ismerjük fel (unit_axe.png), nem a
-   * feliratról: így a script nyelvfüggetlen, és akkor sem áll le, ha a játék
-   * átfogalmaz egy fejlécet.
+   * feliratról és nem az oszlop sorszámából. Így a script nyelvfüggetlen, és
+   * nem csúszik el akkor sem, ha a lapon van egy pont- vagy kontinensoszlop
+   * az egységek előtt.
    * ------------------------------------------------------------------- */
   function egysegKulcs(img) {
     var m = /unit_([a-z_]+)\.(?:png|webp|gif)/i.exec(img.getAttribute('src') || '');
@@ -124,7 +137,6 @@
     return POP[kulcs] !== undefined ? kulcs : null;
   }
 
-  /** Egy sorban hány egység-ikonos oszlop van (fejléc-felismeréshez). */
   function egysegOszlopok(sor) {
     var terkep = {};
     var db = 0;
@@ -139,7 +151,6 @@
     return { terkep: terkep, db: db };
   }
 
-  /** Egy táblázat fejlécsorának feltérképezése: oszlopindex → egység. */
   function oszlopterkep(tabla) {
     for (var i = 0; i < tabla.rows.length && i < 5; i++) {
       var t = egysegOszlopok(tabla.rows[i]);
@@ -150,7 +161,6 @@
     return null;
   }
 
-  /** A legtöbb egységoszlopot tartalmazó táblázat a lapon. */
   function fotabla() {
     var tablak = document.getElementsByTagName('table');
     var legjobb = null;
@@ -163,36 +173,83 @@
     return legjobb;
   }
 
-  /** „1.234" / „1 234" / „1,234" → 1234. Üres vagy kötőjel → 0. */
+  /**
+   * „1.234" / „1 234" / „1,234" -> 1234.
+   * A „?" nem nulla: azt jelenti, hogy a tag nem osztja meg az adatot. Ezt
+   * külön jelezzük, mert különben csendben lefelé hazudna az összeg.
+   */
   function szam(szoveg) {
-    var tiszta = (szoveg || '').replace(/[^\d]/g, '');
-    if (!tiszta) return 0;
+    var sz = (szoveg || '').trim();
+    if (sz.indexOf('?') >= 0) return { ertek: 0, ismeretlen: true };
+    var tiszta = sz.replace(/[^\d]/g, '');
+    if (!tiszta) return { ertek: 0, ismeretlen: false };
     var n = parseInt(tiszta, 10);
-    return isFinite(n) ? n : 0;
+    return { ertek: isFinite(n) ? n : 0, ismeretlen: false };
   }
 
-  /** A sor címkéje: a játékos vagy falu neve az első értelmes cellából. */
+  /**
+   * A sor neve: a falu vagy a tag neve.
+   *
+   * Elsőként a LINKES cellát nézzük (a falu- vagy profillink mindig a néven
+   * van) - ettől a „001"-féle, csupa számjegyből álló falunév sem vész el.
+   * Ha nincs link, az első olyan cella jön, ami nem puszta szám: így a
+   * pontoszlop nem lesz névvé.
+   */
   function sorCimke(sor, terkep) {
+    var elsoNemUres = '';
     for (var j = 0; j < sor.cells.length; j++) {
       if (terkep[j] !== undefined) break;
       var sz = (sor.cells[j].textContent || '').replace(/\s+/g, ' ').trim();
-      if (sz && !/^\d+$/.test(sz)) return sz;
+      if (!sz) continue;
+      if (sor.cells[j].getElementsByTagName('a').length) return sz;
+      if (!elsoNemUres && !/^\d[\d.,\s]*$/.test(sz)) elsoNemUres = sz;
     }
-    return '';
+    return elsoNemUres;
+  }
+
+  /** A sor azonosítója: faluazonosító a linkből, vagy koordináta a szövegből. */
+  function sorKulcs(sor, terkep, cimke) {
+    for (var j = 0; j < sor.cells.length; j++) {
+      if (terkep[j] !== undefined) break;
+      var linkek = sor.cells[j].getElementsByTagName('a');
+      for (var k = 0; k < linkek.length; k++) {
+        var href = linkek[k].getAttribute('href') || '';
+        var m = /(?:[?&](?:village|id)=)(\d+)/.exec(href);
+        if (m) return 'v' + m[1];
+      }
+    }
+    var koord = /(\d{1,3}\|\d{1,3})/.exec(cimke || '');
+    if (koord) return 'k' + koord[1];
+    return cimke ? 'n' + cimke : '';
+  }
+
+  /**
+   * Játékossorok-e, vagy falusorok?
+   *
+   * Játékossor: az első cellából info_player linkre mutat. Falusor: falulink
+   * vagy koordináta van benne. Ettől függ, hogy egy sor egy TAG összesenje,
+   * vagy egy FALU.
+   */
+  function jatekossorE(sor, terkep) {
+    for (var j = 0; j < sor.cells.length; j++) {
+      if (terkep[j] !== undefined) break;
+      var linkek = sor.cells[j].getElementsByTagName('a');
+      for (var k = 0; k < linkek.length; k++) {
+        var href = linkek[k].getAttribute('href') || '';
+        if (/info_player|mode=member_wall|player_id=/.test(href)) return true;
+      }
+    }
+    return false;
   }
 
   /* ---------------------------------------------------------------------
    * 3/b) Sortípusok
    *
-   * Az egység-áttekintőben egy faluhoz TÖBB sor is tartozhat, ha a játékos
-   * több sortípust kapcsolt be: „saját csapatok", „a faluban (idegennel
-   * együtt)", „úton lévők". Ilyenkor a játék falvanként külön <tbody>-ba
-   * teszi a sorokat.
-   *
-   * Ha ezeket vakon összeadnánk, ugyanazt a sereget többször számolnánk, az
-   * idegen támogatást pedig sajátként vennénk be. Ezért: felismerjük a
-   * sortípusokat, és a felhasználó választja ki, melyiket összegezzük.
-   * Alapértelmezés az első sor. Semmit nem adunk össze a háta mögött.
+   * Egy faluhoz TÖBB sor is tartozhat, ha több sortípus van bekapcsolva
+   * („saját csapatok", „a faluban - idegennel együtt", „úton lévők").
+   * Ilyenkor a játék falvanként külön <tbody>-ba teszi a sorokat. Ha vakon
+   * összeadnánk őket, ugyanazt a sereget számolnánk többször, az idegen
+   * támogatást pedig sajátként vennénk be. Ezért választani kell.
    * ------------------------------------------------------------------- */
   function adatSorE(sor, terkep) {
     for (var j in terkep) {
@@ -202,7 +259,6 @@
     return false;
   }
 
-  /** Falvankénti <tbody>-csoportok, vagy null, ha a tábla egysoros szerkezetű. */
   function csoportok(tabla, terkepInfo) {
     var tbodyk = tabla.tBodies || [];
     if (!tbodyk.length || tbodyk.length < 2) return null;
@@ -213,8 +269,7 @@
       var sorok = [];
       var tsorok = tbodyk[i].rows || [];
       for (var j = 0; j < tsorok.length; j++) {
-        // A fejlécsort (négy vagy több egység-ikon) kihagyjuk.
-        if (egysegOszlopok(tsorok[j]).db >= 4) continue;
+        if (egysegOszlopok(tsorok[j]).db >= 4) continue;       // fejléc
         if (!adatSorE(tsorok[j], terkepInfo.terkep)) continue;
         sorok.push(tsorok[j]);
       }
@@ -223,13 +278,10 @@
       ki.push(sorok);
     }
 
-    // Egy sor per falu → nincs mit választani, marad a sima olvasás.
-    // Hatnál több sor per csoport már nem sortípus, hanem valami más tábla.
     if (!ki.length || max < 2 || max > 6) return null;
     return { csoportok: ki, sortipusDb: max };
   }
 
-  /** A p. sorpozíció neve, a sorok első cellájából (nyelvfüggetlen). */
   function sortipusNev(csoportLista, p, terkep) {
     var szamlalo = {};
     for (var i = 0; i < csoportLista.length; i++) {
@@ -243,26 +295,74 @@
     for (var k in szamlalo) {
       if (szamlalo[k] > db) { db = szamlalo[k]; legtobb = k; }
     }
-    // Ha minden sorban más a szöveg (pl. falunevek), az nem sortípusnév.
     if (db >= 2 && db >= csoportLista.length / 2) return legtobb;
     return '';
   }
 
   /* ---------------------------------------------------------------------
-   * 4) Beolvasás
+   * 4) Kinek a lapját nézzük?
+   *
+   * A tag-csapatáttekintő címében ott a player_id. A nevet a lapon keressük
+   * meg hozzá (legördülő vagy profil-link). Ha nem találjuk, a panelen be
+   * lehet írni - nem tippelünk a vezető helyett.
+   * ------------------------------------------------------------------- */
+  function cimParameter(nev) {
+    try {
+      var keres = (window && window.location && window.location.search) || '';
+      var m = new RegExp('[?&]' + nev + '=([^&]+)').exec(keres);
+      return m ? decodeURIComponent(m[1]) : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function jatekosNev() {
+    var id = cimParameter('player_id');
+    if (!id) return '';
+
+    // 1) Legördülő, amiben a tag ki van választva.
+    var selectek = document.getElementsByTagName('select');
+    for (var i = 0; i < selectek.length; i++) {
+      var opciok = selectek[i].getElementsByTagName('option');
+      for (var j = 0; j < opciok.length; j++) {
+        if (String(opciok[j].value) === String(id)) {
+          var sz = (opciok[j].textContent || '').trim();
+          if (sz) return sz;
+        }
+      }
+    }
+
+    // 2) Profil-link ugyanerre az azonosítóra.
+    var linkek = document.getElementsByTagName('a');
+    for (var k = 0; k < linkek.length; k++) {
+      var href = linkek[k].getAttribute('href') || '';
+      if (!/info_player/.test(href)) continue;
+      var m = /[?&]id=(\d+)/.exec(href);
+      if (m && m[1] === id) {
+        var sz2 = (linkek[k].textContent || '').replace(/\s+/g, ' ').trim();
+        if (sz2) return sz2;
+      }
+    }
+    return '';
+  }
+
+  /* ---------------------------------------------------------------------
+   * 5) Beolvasás
    * ------------------------------------------------------------------- */
   function sorEgysegei(sor, terkep) {
     var egysegek = {};
     var vanSzam = false;
+    var ismeretlen = 0;
     for (var j in terkep) {
       if (!Object.prototype.hasOwnProperty.call(terkep, j)) continue;
       var cella = sor.cells[j];
       if (!cella) continue;
-      var db = szam(cella.textContent);
-      egysegek[terkep[j]] = db;
-      if (db > 0) vanSzam = true;
+      var sz = szam(cella.textContent);
+      egysegek[terkep[j]] = sz.ertek;
+      if (sz.ismeretlen) ismeretlen++;
+      if (sz.ertek > 0) vanSzam = true;
     }
-    return { egysegek: egysegek, vanSzam: vanSzam };
+    return { egysegek: egysegek, vanSzam: vanSzam, ismeretlen: ismeretlen };
   }
 
   function beolvas(b) {
@@ -271,48 +371,93 @@
 
     var terkep = talalat.terkepInfo.terkep;
     var cs = csoportok(talalat.tabla, talalat.terkepInfo);
-    var sorok = [];
+    var nyersSorok = [];
     var sortipusok = [];
     var pozicio = 0;
 
     if (cs) {
-      /* Falvankénti csoportok: egy falu = egy sorozat sortípus. */
       pozicio = Math.min(b.sorPozicio || 0, cs.sortipusDb - 1);
       for (var p = 0; p < cs.sortipusDb; p++) {
         sortipusok.push(sortipusNev(cs.csoportok, p, terkep));
       }
       for (var i = 0; i < cs.csoportok.length; i++) {
-        var csoport = cs.csoportok[i];
-        var cimke = sorCimke(csoport[0], terkep);
-        var valasztott = csoport[pozicio];
-        if (!cimke || !valasztott) continue;
-        var e = sorEgysegei(valasztott, terkep);
-        if (!e.vanSzam) continue;
-        sorok.push({ cimke: cimke, egysegek: e.egysegek });
+        var fejsor = cs.csoportok[i][0];
+        var valasztott = cs.csoportok[i][pozicio];
+        if (!valasztott) continue;
+        nyersSorok.push({ fejsor: fejsor, adatsor: valasztott });
       }
     } else {
-      /* Egy sor = egy bejegyzés (klántábla, egysoros falulista). */
       for (var r = talalat.terkepInfo.fejlec + 1; r < talalat.tabla.rows.length; r++) {
-        var sor = talalat.tabla.rows[r];
-        var e2 = sorEgysegei(sor, terkep);
-        var cimke2 = sorCimke(sor, terkep);
-        // Csak olyan sor érdekel, aminek van neve ÉS van benne szám. Az
-        // összegző sorokat (jellemzően nincs nevük) így kihagyjuk.
-        if (!cimke2 || !e2.vanSzam) continue;
-        sorok.push({ cimke: cimke2, egysegek: e2.egysegek });
+        nyersSorok.push({ fejsor: talalat.tabla.rows[r], adatsor: talalat.tabla.rows[r] });
       }
     }
 
+    var sorok = [];
+    var ismeretlen = 0;
+    var jatekosSorok = 0;
+    for (var s = 0; s < nyersSorok.length; s++) {
+      var fej = nyersSorok[s].fejsor;
+      var e = sorEgysegei(nyersSorok[s].adatsor, terkep);
+      var cimke = sorCimke(fej, terkep);
+      // Név és legalább egy szám kell. Az összegző sorokban jellemzően nincs
+      // név, így azok kimaradnak - nem adjuk hozzá a részletekhez.
+      if (!cimke || !e.vanSzam) continue;
+      ismeretlen += e.ismeretlen;
+      var jatekos = jatekossorE(fej, terkep);
+      if (jatekos) jatekosSorok++;
+      sorok.push({
+        cimke: cimke,
+        kulcs: sorKulcs(fej, terkep, cimke),
+        egysegek: e.egysegek,
+        jatekos: jatekos
+      });
+    }
+
+    // Ha a sorok többsége játékosprofilra mutat, akkor ez egy tagokat
+    // felsoroló tábla; különben egy tag falvai.
+    var mod = sorok.length && jatekosSorok >= sorok.length / 2 ? 'jatekos' : 'falu';
+
     return {
       sorok: sorok,
+      mod: mod,
       egysegDb: talalat.terkepInfo.db,
       sortipusok: sortipusok,
-      sorPozicio: pozicio
+      sorPozicio: pozicio,
+      ismeretlen: ismeretlen
     };
   }
 
   /* ---------------------------------------------------------------------
-   * 5) Számítás
+   * 6) Rögzítés a klántáblába
+   *
+   * Falusorok: a megnyitott lap falvai egy taghoz tartoznak. Faluazonosító
+   * szerint tároljuk, ezért ugyanannak a lapnak az újbóli megnyitása NEM
+   * duplázza az összeget, és a több oldalra tördelt lista oldalai szépen
+   * összeadódnak, ahogy a vezető lapoz.
+   *
+   * Játékossorok: minden sor egy tag összesenje, egy kulcs alatt.
+   * ------------------------------------------------------------------- */
+  function rogzit(tabla, adat, jatekos) {
+    if (adat.mod === 'jatekos') {
+      for (var i = 0; i < adat.sorok.length; i++) {
+        var s = adat.sorok[i];
+        tabla[s.cimke] = { falvak: { osszesen: s.egysegek } };
+      }
+      return adat.sorok.length;
+    }
+    if (!jatekos) return 0;
+    if (!tabla[jatekos]) tabla[jatekos] = { falvak: {} };
+    if (!tabla[jatekos].falvak) tabla[jatekos].falvak = {};
+    for (var j = 0; j < adat.sorok.length; j++) {
+      var f = adat.sorok[j];
+      if (!f.kulcs) continue;
+      tabla[jatekos].falvak[f.kulcs] = f.egysegek;
+    }
+    return adat.sorok.length;
+  }
+
+  /* ---------------------------------------------------------------------
+   * 7) Számítás
    *
    * Populáció-összegzés, utána osztás. NEM kategorizálunk falvanként: ha
    * valakinek két fél nuke-ja van, az egy egész - a darabolós módszer ezt
@@ -327,22 +472,35 @@
     return osszeg;
   }
 
-  function szamol(sorok, b) {
+  function szamol(tabla, b) {
     var ki = [];
-    for (var i = 0; i < sorok.length; i++) {
-      var e = sorok[i].egysegek;
-      var tamadoPop = popOsszeg(e, TAMADO);
-      var vedoPop = popOsszeg(e, VEDO);
-      var nemes = e.snob || 0;
+    for (var nev in tabla) {
+      if (!Object.prototype.hasOwnProperty.call(tabla, nev)) continue;
+      var falvak = (tabla[nev] && tabla[nev].falvak) || {};
+      var ossz = {};
+      var faluDb = 0;
+      for (var kulcs in falvak) {
+        if (!Object.prototype.hasOwnProperty.call(falvak, kulcs)) continue;
+        faluDb++;
+        var e = falvak[kulcs];
+        for (var u in e) {
+          if (!Object.prototype.hasOwnProperty.call(e, u)) continue;
+          ossz[u] = (ossz[u] || 0) + (e[u] || 0);
+        }
+      }
+      var tamadoPop = popOsszeg(ossz, TAMADO);
+      var vedoPop = popOsszeg(ossz, VEDO);
+      var nemes = ossz.snob || 0;
       ki.push({
-        cimke: sorok[i].cimke,
-        egysegek: e,
+        cimke: nev,
+        egysegek: ossz,
+        faluDb: faluDb,
         tamadoPop: tamadoPop,
         vedoPop: vedoPop,
         nuke: tamadoPop / b.nukePop,
         vedo: vedoPop / b.vedoPop,
         nemes: nemes,
-        felderito: e.spy || 0,
+        felderito: ossz.spy || 0,
         vonat: Math.floor(nemes / b.nemesVonatonkent)
       });
     }
@@ -351,29 +509,28 @@
   }
 
   function kerekit(n) { return Math.round(n * 10) / 10; }
-
   function szoveg(sz) { return String(sz == null ? '' : sz).replace(/[<>&"]/g, ''); }
 
   /* ---------------------------------------------------------------------
-   * 6) Megjelenítés
+   * 8) Megjelenítés
    * ------------------------------------------------------------------- */
-  function panelt(eredmeny, b, adat) {
+  function panelt(eredmeny, b, adat, allapot) {
     var regi = document.getElementById('kcs_panel');
     if (regi) regi.parentNode.removeChild(regi);
 
-    var osszNuke = 0, osszVonat = 0, osszVedo = 0, osszFelderito = 0;
+    var osszNuke = 0, osszVonat = 0, osszVedo = 0, osszFalu = 0;
     for (var i = 0; i < eredmeny.length; i++) {
       osszNuke += eredmeny[i].nuke;
       osszVonat += eredmeny[i].vonat;
       osszVedo += eredmeny[i].vedo;
-      osszFelderito += eredmeny[i].felderito;
+      osszFalu += eredmeny[i].faluDb;
     }
 
     var panel = document.createElement('div');
     panel.id = 'kcs_panel';
     panel.style.cssText =
-      'position:fixed;top:40px;right:20px;z-index:99999;width:min(560px,94vw);' +
-      'max-height:82vh;overflow:auto;background:#f4e4bc;border:2px solid #7d510f;' +
+      'position:fixed;top:40px;right:20px;z-index:99999;width:min(620px,94vw);' +
+      'max-height:86vh;overflow:auto;background:#f4e4bc;border:2px solid #7d510f;' +
       'border-radius:6px;padding:10px 12px;font:12px Verdana,Arial,sans-serif;' +
       'color:#000;box-shadow:0 6px 22px rgba(0,0,0,.4);';
 
@@ -383,28 +540,51 @@
     html += '<button id="kcs_bezar" style="cursor:pointer;">Bezár</button>';
     html += '</div>';
 
-    html += '<div style="margin:8px 0;padding:6px;background:#e3d5b0;border:1px solid #c1a264;">';
-    html += '<b>Összesen:</b> ' + kerekit(osszNuke) + ' nuke · ' + osszVonat + ' nemesvonat · ' +
-            kerekit(osszVedo) + ' védősereg · ' + osszFelderito.toLocaleString('hu-HU') + ' felderítő ' +
-            '<span style="color:#603000;">(' + eredmeny.length + ' sor)</span>';
+    /* Mit olvastunk be ezen a lapon. */
+    html += '<div style="margin:8px 0;padding:6px;background:#f6e0c0;border:1px solid #c1a264;">';
+    if (adat.mod === 'jatekos') {
+      html += '<b>Ez a lap tagonként összesít.</b> ' + adat.sorok.length + ' tag sorát olvastam be.';
+    } else {
+      html += '<b>Ez a lap egy tag falvait mutatja.</b> ' + adat.sorok.length + ' falu ezen az oldalon.';
+      html += '<br>Tag: <input id="kcs_jatekos" type="text" value="' + szoveg(allapot.jatekos) + '" ' +
+              'placeholder="a tag neve" style="width:180px"> ' +
+              '<button id="kcs_rogzit" style="cursor:pointer;">Hozzáadás a klántáblához</button>';
+      if (!allapot.jatekos) {
+        html += '<br><span style="color:#8a2a00;">A tag nevét nem találtam meg a lapon - írd be, mielőtt hozzáadod.</span>';
+      }
+      html += '<br><span style="color:#603000;">Több oldalas lista: lapozz a játékban, és minden oldalon kattints ' +
+              'újra. Falvanként tárolom, ezért semmi nem duplázódik.</span>';
+    }
+    if (adat.ismeretlen) {
+      html += '<br><span style="color:#8a2a00;"><b>' + adat.ismeretlen + ' cellában „?" áll</b> ' +
+              '(a tag nem osztja meg) - ezek nullaként szerepelnek, tehát az összeg alsó becslés.</span>';
+    }
+    if (allapot.uzenet) {
+      html += '<br><b style="color:#1d5c2a;">' + szoveg(allapot.uzenet) + '</b>';
+    }
     html += '</div>';
 
-    /* Sortípus-választó: csak akkor, ha a táblában tényleg több sor tartozik
-     * egy faluhoz. Így sosem adunk össze kétszer ugyanazt. */
+    /* Sortípus-választó: csak ha egy faluhoz tényleg több sor tartozik. */
     if (adat.sortipusok && adat.sortipusok.length > 1) {
       html += '<div style="margin:8px 0;padding:6px;background:#f6e0c0;border:1px solid #c1a264;">';
       html += '<b>Több sortípus van bekapcsolva</b> - egy faluhoz ' + adat.sortipusok.length +
-              ' sor tartozik. Csak az alább kiválasztott sort számolom, hogy ne adódjon össze kétszer ' +
+              ' sor tartozik. Csak a kiválasztott sort számolom, hogy ne adódjon össze kétszer ' +
               'ugyanaz a sereg (és ne kerüljön bele idegen támogatás).<br>';
       html += 'Számolt sor: <select id="kcs_sor">';
       for (var p = 0; p < adat.sortipusok.length; p++) {
-        var nev = adat.sortipusok[p] ? szoveg(adat.sortipusok[p]) : (p + 1) + '. sor';
+        var snev = adat.sortipusok[p] ? szoveg(adat.sortipusok[p]) : (p + 1) + '. sor';
         html += '<option value="' + p + '"' + (p === adat.sorPozicio ? ' selected' : '') + '>' +
-                (p + 1) + '. - ' + nev + '</option>';
+                (p + 1) + '. - ' + snev + '</option>';
       }
-      html += '</select> <button id="kcs_sorujra" style="cursor:pointer;">Újraszámol</button>';
+      html += '</select> <button id="kcs_sorujra" style="cursor:pointer;">Újraolvasás</button>';
       html += '</div>';
     }
+
+    html += '<div style="margin:8px 0;padding:6px;background:#e3d5b0;border:1px solid #c1a264;">';
+    html += '<b>Klántábla összesen:</b> ' + kerekit(osszNuke) + ' nuke · ' + osszVonat + ' nemesvonat · ' +
+            kerekit(osszVedo) + ' védősereg <span style="color:#603000;">(' + eredmeny.length +
+            ' tag, ' + osszFalu + ' falu)</span>';
+    html += '</div>';
 
     html += '<div style="margin:8px 0;padding:6px;background:#e3d5b0;border:1px solid #c1a264;">';
     html += '<b>Mihez viszonyítunk</b> (populáció, módosítható):<br>';
@@ -415,9 +595,14 @@
     html += '</div>';
 
     html += '<table style="width:100%;border-collapse:collapse;">';
-    html += '<tr style="background:#c1a264;"><th style="text-align:left;padding:3px;">Név</th>' +
+    html += '<tr style="background:#c1a264;"><th style="text-align:left;padding:3px;">Tag</th>' +
             '<th style="padding:3px;">Nuke</th><th style="padding:3px;">Vonat</th>' +
-            '<th style="padding:3px;">Védő</th><th style="padding:3px;">Támadó pop</th></tr>';
+            '<th style="padding:3px;">Védő</th><th style="padding:3px;">Felderítő</th>' +
+            '<th style="padding:3px;">Falu</th></tr>';
+    if (!eredmeny.length) {
+      html += '<tr><td colspan="6" style="padding:8px;color:#603000;">A klántábla még üres. ' +
+              'Nyisd meg egy tag csapatáttekintőjét, és add hozzá.</td></tr>';
+    }
     for (var k = 0; k < eredmeny.length; k++) {
       var s = eredmeny[k];
       html += '<tr style="border-bottom:1px solid #d7c096;">' +
@@ -425,22 +610,25 @@
         '<td style="padding:3px;text-align:right;"><b>' + kerekit(s.nuke) + '</b></td>' +
         '<td style="padding:3px;text-align:right;">' + s.vonat + '</td>' +
         '<td style="padding:3px;text-align:right;">' + kerekit(s.vedo) + '</td>' +
-        '<td style="padding:3px;text-align:right;color:#603000;">' + s.tamadoPop.toLocaleString('hu-HU') + '</td>' +
+        '<td style="padding:3px;text-align:right;color:#603000;">' + s.felderito.toLocaleString('hu-HU') + '</td>' +
+        '<td style="padding:3px;text-align:right;color:#603000;">' + s.faluDb + '</td>' +
         '</tr>';
     }
     html += '</table>';
 
     html += '<div style="margin-top:8px;">';
-    html += '<button id="kcs_masol" style="cursor:pointer;">Másolás vágólapra</button> ';
+    html += '<button id="kcs_masol" style="cursor:pointer;">Klántábla másolása</button> ';
+    html += '<button id="kcs_urit" style="cursor:pointer;">Klántábla ürítése</button> ';
     html += '<span id="kcs_uzenet" style="color:#603000;"></span>';
     html += '</div>';
 
     html += '<div style="margin-top:8px;font-size:11px;color:#603000;line-height:1.5;">' +
-      'A számítás populáció alapján megy: minden egység a játékbeli farm-helyével súlyozva. ' +
-      'A felderítő, a lovag és a nemes nincs beleszámítva sem a támadó, sem a védő összegbe; ' +
-      'a katapult csak a támadó oldalon szerepel. ' +
-      'A script nem küld sehova adatot és nem végez semmilyen játékbeli műveletet - ' +
-      'csak azt adja össze, ami ezen a lapon amúgy is látszik.' +
+      'A számítás populáció alapján megy: minden egység a játékbeli farm-helyével súlyozva, ' +
+      'és csak a végén osztunk - így két fél nuke egy egész. ' +
+      'A felderítő SEM a támadó, SEM a védő összegben nincs benne (nem harcol), a lovag és a ' +
+      'nemes szintén nincs; a katapult csak a támadó oldalon. ' +
+      'A script nem kér le egyetlen lapot sem és nem küld sehova adatot - csak azt adja össze, ' +
+      'ami a megnyitott lapon amúgy is látszik.' +
       '</div>';
 
     panel.innerHTML = html;
@@ -450,30 +638,48 @@
       panel.parentNode.removeChild(panel);
     };
 
-    function ujraszamol(sorPozicio) {
-      var uj = {
+    function mentBeallitas(sorPozicio) {
+      irTarolo(TAROLO, {
         nukePop: +document.getElementById('kcs_nuke').value || ALAP.nukePop,
         vedoPop: +document.getElementById('kcs_vedo').value || ALAP.vedoPop,
         nemesVonatonkent: +document.getElementById('kcs_nemes').value || ALAP.nemesVonatonkent,
         sorPozicio: sorPozicio
-      };
-      beallitastMent(uj);
-      futtat();
+      });
     }
 
     document.getElementById('kcs_ujra').onclick = function () {
-      ujraszamol(adat.sorPozicio || 0);
+      mentBeallitas(adat.sorPozicio || 0);
+      futtat({ jatekos: allapot.jatekos });
     };
 
     if (adat.sortipusok && adat.sortipusok.length > 1) {
       document.getElementById('kcs_sorujra').onclick = function () {
-        ujraszamol(+document.getElementById('kcs_sor').value || 0);
+        mentBeallitas(+document.getElementById('kcs_sor').value || 0);
+        futtat({ jatekos: allapot.jatekos });
       };
     }
 
+    if (adat.mod === 'falu') {
+      document.getElementById('kcs_rogzit').onclick = function () {
+        var nev = (document.getElementById('kcs_jatekos').value || '').trim();
+        if (!nev) {
+          document.getElementById('kcs_uzenet').textContent = 'Írd be a tag nevét.';
+          return;
+        }
+        var t = klantabla();
+        var db = rogzit(t, adat, nev);
+        irTarolo(KLAN_TAROLO, t);
+        futtat({ jatekos: nev, uzenet: nev + ': ' + db + ' falu hozzáadva.' });
+      };
+    }
+
+    document.getElementById('kcs_urit').onclick = function () {
+      irTarolo(KLAN_TAROLO, {});
+      futtat({ jatekos: allapot.jatekos, uzenet: 'A klántábla kiürítve.' });
+    };
+
     document.getElementById('kcs_masol').onclick = function () {
-      var sz = tsv(eredmeny);
-      masol(sz, function (ok) {
+      masol(tsv(eredmeny), function (ok) {
         document.getElementById('kcs_uzenet').textContent =
           ok ? 'Kimásolva.' : 'A vágólap nem elérhető - jelöld ki a táblázatot kézzel.';
       });
@@ -481,19 +687,19 @@
   }
 
   /* ---------------------------------------------------------------------
-   * 7) Másolás
+   * 9) Másolás
    *
    * Tabulátorral tagolt sorok: ez illeszthető be táblázatkezelőbe, jegyzetbe,
    * bárhova. A másolás KIZÁRÓLAG a felhasználó kattintására fut le, és a
    * szöveg a saját gépén marad.
    * ------------------------------------------------------------------- */
   function tsv(eredmeny) {
-    var sorok = ['nev\tnuke\tvonat\tvedo\ttamado_pop\tvedo_pop\tnemes\tfelderito'];
+    var sorok = ['nev\tnuke\tvonat\tvedo\ttamado_pop\tvedo_pop\tnemes\tfelderito\tfalu'];
     for (var i = 0; i < eredmeny.length; i++) {
       var s = eredmeny[i];
       sorok.push([
         s.cimke, kerekit(s.nuke), s.vonat, kerekit(s.vedo),
-        s.tamadoPop, s.vedoPop, s.nemes, s.felderito
+        s.tamadoPop, s.vedoPop, s.nemes, s.felderito, s.faluDb
       ].join('\t'));
     }
     return sorok.join('\n');
@@ -519,14 +725,15 @@
   }
 
   /* ---------------------------------------------------------------------
-   * 8) Indítás - ez az EGY kattintás, amit a script helyettesít
+   * 10) Indítás - ez az EGY kattintás, amit a script helyettesít
    * ------------------------------------------------------------------- */
-  function futtat() {
+  function futtat(allapot) {
+    allapot = allapot || {};
     var b = beallitasok();
     var adat = beolvas(b);
     if (!adat) {
       alert(NEV + ':\n\nNem találtam egységeket tartalmazó táblázatot ezen a lapon.\n\n' +
-            'Nyisd meg a saját falvaid egység-áttekintőjét (Áttekintés → Csapatok), ' +
+            'Nyisd meg a klán csapatáttekintőjét (Klán -> Tagok -> Csapatok), ' +
             'és ott indítsd el.');
       return;
     }
@@ -534,7 +741,18 @@
       alert(NEV + ':\n\nMegtaláltam a táblázatot, de egyetlen értékelhető sort sem olvastam ki belőle.');
       return;
     }
-    panelt(szamol(adat.sorok, b), b, adat);
+
+    var tabla = klantabla();
+    var jatekos = allapot.jatekos || jatekosNev();
+
+    // A tagonkénti tábla minden sora egy kész összesen: azt rögtön felvesszük.
+    // A falusoros lapot a vezető erősíti meg, mert a név tőle jön.
+    if (adat.mod === 'jatekos') {
+      rogzit(tabla, adat, null);
+      irTarolo(KLAN_TAROLO, tabla);
+    }
+
+    panelt(szamol(tabla, b), b, adat, { jatekos: jatekos, uzenet: allapot.uzenet });
   }
 
   futtat();

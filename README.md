@@ -1,13 +1,15 @@
 # Klán csapatösszesítő
 
-Játékbeli segédscript a **Klánháborúhoz** (Tribal Wars). Egy kattintásra
-összeadja a csapatáttekintőn **már látható** oszlopokat, és megmondja, mennyi
-**nuke**, **nemesvonat** és **védősereg** van - tört értékkel, nem dobozokba
-sorolva.
+Játékbeli segédscript a **Klánháborúhoz** (Tribal Wars), **klánvezetőknek**.
 
-Nem szerez új információt, nem kérdez le semmit a szervertől, és nem automatizál
-semmilyen játékbeli műveletet. Pontosan azt adja össze, ami a képernyőn amúgy is
-ott van.
+A vezető a klán csapatáttekintőjén (**Klán → Tagok → Csapatok**) látja a tagok
+falvait és egységeit. Ez a script azt a lapot adja össze helyette - egy
+kattintásra, **populáció (farm-hely) alapján**, tört értékkel. Ahogy a vezető
+végigmegy a tagokon, úgy áll össze a teljes klántábla.
+
+Nem szerez új információt, **nem kér le egyetlen oldalt sem** a játékból, és nem
+automatizál semmilyen játékbeli műveletet. Pontosan azt adja össze, ami a
+megnyitott lapon amúgy is ott van.
 
 - Forrás: [`klan-csapatosszesito.js`](klan-csapatosszesito.js) - kommentezett,
   tömörítetlen, nem obfuszkált
@@ -36,13 +38,27 @@ után **ne írd át** - a módosítást is engedélyeztetni kell.
 javascript:$.getScript('https://cdn.jsdelivr.net/gh/kakaos1999-pixel/kh-csapatosszesito@main/klan-csapatosszesito.js');
 ```
 
-Aztán nyisd meg az **Áttekintés → Csapatok** lapot
-(`game.php?screen=overview_villages&mode=units`), és kattints a gyorssávban a
-linkre.
-
 > A jsDelivr azért kell, mert a GitHub nyers (raw) linkjét a böngésző
-> `text/plain`-ként kapja, és nem futtatja le. A **forrás** olvasásához a
-> fenti `klan-csapatosszesito.js` link való.
+> `text/plain`-ként kapja, és nem futtatja le. A **forrás** olvasásához a fenti
+> `klan-csapatosszesito.js` link való.
+
+## Használat
+
+1. Nyisd meg egy tag csapatáttekintőjét (**Klán → Tagok → Csapatok**).
+2. Kattints a gyorssávban a linkre. A panel kiírja, mit olvasott be.
+3. Írd be (vagy hagyd jóvá) a tag nevét, és nyomd meg a **Hozzáadás a
+   klántáblához** gombot.
+4. Lapozz a következő tagra, és ismételd. A klántábla gyűlik.
+
+Ha a lista **több oldalas**, minden oldalon kattints újra: a script falvanként
+tárolja az adatot, ezért **sem a lapozás, sem az újranyitás nem duplázza** az
+összeget.
+
+Ha a megnyitott lap **tagonként** összesít (minden sor egy tag), akkor egyetlen
+kattintással az egész klánt beolvassa.
+
+Végül a **Klántábla másolása** gomb tabulátorral tagolt táblázatot tesz a
+vágólapra - táblázatkezelőbe, jegyzetbe, bárhova beilleszthető.
 
 ## Hogyan számol
 
@@ -68,45 +84,55 @@ Besorolás:
 
 - **támadó**: bárdos, könnyűlovas, lovas íjász, faltörő, **katapult** (csak itt)
 - **védő**: lándzsás, kardforgató, íjász, nehézlovas
-- **egyik sem**: felderítő (nem harcol), lovag (egyedi), nemes (külön,
-  vonatként) - ezek külön jelennek meg, nem a sereg-egyenértékben
+- **egyikbe sem**: **felderítő** (nem harcol - sem támadni, sem védeni nem lehet
+  vele), lovag (egyedi), nemes (külön, vonatként). Ezek külön oszlopban
+  jelennek meg, nem a sereg-egyenértékben.
 - a milícia nem foglal farmhelyet, így populáció alapon magától kimarad
 
-## Miben más, mint a megszokott összesítők
+Ha egy cellában **`?`** áll (a tag nem osztja meg az adatot), azt nem nézzük
+nullának: a panel kiírja, hány ilyen volt, és hogy az összeg emiatt alsó becslés.
 
-A ma elterjedt **Troops Counter** (eredetileg *dalesmckay*, a karbantartott
-változat *RedAlert*-é, v8.6) ugyanezen a lapon, ugyanezt az adatot olvassa.
-A különbség a számtan: az **falvanként kategóriákba sorol** (teljes / ¾ / ½ / ¼),
-ez pedig összead, és csak a végén oszt. A kategóriás módszer négy helyen visz
-félre:
+## Miben más, mint a ma használt összesítő
 
-1. **A maradék elvész.** 19 999 populáció „¾ nuke", 20 000 pedig „1". Két fél
-   nuke két „½" marad, soha nem áll össze egy egésszé.
-2. **A vegyes falu kétszer számít.** Minden kategória külön feltételként fut le,
-   nincs „első találat nyer" - egy 12 000 támadó- és 12 000 védőpopulációs falu
-   egyszerre lesz ½ nuke **és** ½ védő.
-3. **A nemessel álló nuke kiesik.** A nuke-kategóriák feltétele nulla nemes, a
-   vonaté négy nemes, a köztes eseté pedig 19 600 alatti támadóerő. Egy falu
-   1-3 nemessel és egy teljes nuke-kal egyetlen kategóriába sem esik bele -
-   nem hibát ír, csendben kimarad.
-4. **A katapult mindkét oldalon szerepel** nála (a támadó és a védő listában is),
-   tehát ugyanaz a populáció kétszer számít.
+A klánvezetők ma jellemzően a **Tribe member troops calculator**-t (Shinko to
+Kuma, 2021, `.net` jegyszám t13993699) használják. Ugyanarról a lapról dolgozik,
+de **falvanként kategóriákba sorol** (teljes / ¾ / ½ / ¼), és ez négy helyen
+visz félre:
 
-Ezért ad ez a script tört számot kategória helyett, és ezért van a katapult csak
-a támadó oldalon.
+1. **A felderítőt mindkét oldalon beszámolja.** A `spy` ág a felderítő
+   populációját a *támadó* és a *védő* összeghez is hozzáadja. Egy
+   felderítőfalu így egyszerre jelenik meg fél nuke-ként és fél védőseregként -
+   pedig felderítővel sem támadni, sem védeni nem lehet. Ez a legnagyobb
+   torzítás, mert a felderítőfalvak száma sokszor több tucat tagonként.
+2. **A vegyes falu kétszer számít.** A támadó és a védő besorolás egymástól
+   függetlenül fut le, nincs „első találat nyer" - egy felerészt támadó,
+   felerészt védő falu egyszerre lesz ½ nuke **és** ½ védő.
+3. **A maradék elvész.** Egy 97%-os nuke „¾"-ként jelenik meg, és két fél nuke
+   soha nem áll össze egy egésszé. A küszöb alatti falvak pedig sehol nem
+   látszanak. Emiatt fordulhat elő, hogy egy tagnál „1 teljes nuke" és
+   „94 háromnegyed nuke" szerepel, miközben a valóságban közel 94 bevethető
+   nuke-ja van.
+4. **A lovag és a milícia kimarad** a számításból.
+
+Mellékesen: az a script **minden tag lapját, és annak minden aloldalát letölti**
+magától. A `.net`-en ezt engedélyezték; a magyar szabály viszont azt mondja,
+hogy *„csak azok a scriptek szabályosak, amelyek 1 klikkelést helyettesítenek"*.
+Ez a script ezért **semmit nem tölt le**: csak azt a lapot olvassa, amit a
+vezető megnyitott.
 
 ## Ha több sortípus van bekapcsolva
 
-Az egység-áttekintőben egy faluhoz több sor is tartozhat („saját csapatok",
-„a faluban - idegennel együtt", „úton lévők"). Ilyenkor a script **nem adja
-össze** őket - ez lenne a legkönnyebb módja annak, hogy ugyanaz a sereg
-többször számítson, és hogy idegen támogatás sajátként kerüljön be. Helyette
-felismeri a sortípusokat, és a panelen **kiválasztható**, melyiket összegezze.
-Alapértelmezés az első sor.
+Egy faluhoz több sor is tartozhat („saját csapatok", „a faluban - idegennel
+együtt", „úton lévők"). Ilyenkor a script **nem adja össze** őket - ez lenne a
+legkönnyebb módja annak, hogy ugyanaz a sereg többször számítson, és hogy idegen
+támogatás sajátként kerüljön be. Helyette felismeri a sortípusokat, és a panelen
+**kiválasztható**, melyiket összegezze. Alapértelmezés az első sor.
 
 ## Mit nem csinál
 
-- nem küld sehova adatot - **egyetlen hálózati hívás sincs benne**
+- **nem kér le egyetlen lapot sem** a játékból - se másik tag lapját, se a
+  következő oldalt
+- nem küld sehova adatot - egyetlen hálózati hívás sincs benne
 - nem automatizál játékbeli műveletet: nem küld csapatot, nem támad, nem
   támogat, nem nevez át, nem épít, nem kutat
 - nem fut magától, nincs benne időzítő, és nem figyel a fiók eseményeire
@@ -115,8 +141,9 @@ Alapértelmezés az első sor.
   Prémium Tőzsdével
 - nincs elfedve: a forrás olvasható és tömörítetlen
 
-A „Másolás vágólapra" gomb a **saját géped** vágólapjára teszi a táblázatot,
-kizárólag akkor, ha rákattintasz. Ez sem küld sehova semmit.
+Az összegyűjtött klántábla a böngésző saját tárolójában (localStorage) marad, a
+gépen. A **Klántábla másolása** gomb a saját vágólapodra tesz szöveget,
+kizárólag akkor, ha rákattintasz.
 
 A `teszt.mjs` ezeket a forráson is ellenőrzi, nem csak ígéri:
 
