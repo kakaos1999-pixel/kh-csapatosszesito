@@ -2,16 +2,16 @@
 
 Játékbeli segédscript a **Klánháborúhoz** (Tribal Wars). Egy kattintásra
 összeadja a csapatáttekintőn **már látható** oszlopokat, és megmondja, mennyi
-**nuke**, **nemesvonat** és **védősereg** van — tört értékkel, nem dobozokba
+**nuke**, **nemesvonat** és **védősereg** van - tört értékkel, nem dobozokba
 sorolva.
 
 Nem szerez új információt, nem kérdez le semmit a szervertől, és nem automatizál
 semmilyen játékbeli műveletet. Pontosan azt adja össze, ami a képernyőn amúgy is
 ott van.
 
-- Forrás: [`klan-csapatosszesito.js`](klan-csapatosszesito.js) — kommentezett,
+- Forrás: [`klan-csapatosszesito.js`](klan-csapatosszesito.js) - kommentezett,
   tömörítetlen, nem obfuszkált
-- Teszt: [`teszt.mjs`](teszt.mjs) — `node teszt.mjs`, nincs függősége
+- Teszt: [`teszt.mjs`](teszt.mjs) - `node teszt.mjs`, nincs függősége
 
 ---
 
@@ -23,7 +23,7 @@ böngésző-kiegészítők **tiltottak**. Ez a script ezért **gyorssáv-linkké
 indul, nem bővítményként.
 
 Ha használni szeretnéd, előbb kérd a saját világodon a jóváhagyást. A jóváhagyás
-után **ne írd át** — a módosítást is engedélyeztetni kell.
+után **ne írd át** - a módosítást is engedélyeztetni kell.
 
 ## Telepítés
 
@@ -61,7 +61,7 @@ A populációértékek a játék hivatalos adatai (lándzsás 1, kardforgató 1,
 katapult 8, lovag 10, nemes 100).
 
 Hogy mennyi „1 teljes nuke", az világonként és klánonként más, ezért **nincs
-beégetve**: a panelen átírható. Az alapérték egy klasszikus nuke —
+beégetve**: a panelen átírható. Az alapérték egy klasszikus nuke -
 7000 bárdos + 3000 könnyűlovas + 300 faltörő + 50 katapult = **20 900** populáció.
 
 Besorolás:
@@ -69,7 +69,7 @@ Besorolás:
 - **támadó**: bárdos, könnyűlovas, lovas íjász, faltörő, **katapult** (csak itt)
 - **védő**: lándzsás, kardforgató, íjász, nehézlovas
 - **egyik sem**: felderítő (nem harcol), lovag (egyedi), nemes (külön,
-  vonatként) — ezek külön jelennek meg, nem a sereg-egyenértékben
+  vonatként) - ezek külön jelennek meg, nem a sereg-egyenértékben
 - a milícia nem foglal farmhelyet, így populáció alapon magától kimarad
 
 ## Miben más, mint a megszokott összesítők
@@ -83,11 +83,11 @@ félre:
 1. **A maradék elvész.** 19 999 populáció „¾ nuke", 20 000 pedig „1". Két fél
    nuke két „½" marad, soha nem áll össze egy egésszé.
 2. **A vegyes falu kétszer számít.** Minden kategória külön feltételként fut le,
-   nincs „első találat nyer" — egy 12 000 támadó- és 12 000 védőpopulációs falu
+   nincs „első találat nyer" - egy 12 000 támadó- és 12 000 védőpopulációs falu
    egyszerre lesz ½ nuke **és** ½ védő.
 3. **A nemessel álló nuke kiesik.** A nuke-kategóriák feltétele nulla nemes, a
    vonaté négy nemes, a köztes eseté pedig 19 600 alatti támadóerő. Egy falu
-   1–3 nemessel és egy teljes nuke-kal egyetlen kategóriába sem esik bele —
+   1-3 nemessel és egy teljes nuke-kal egyetlen kategóriába sem esik bele -
    nem hibát ír, csendben kimarad.
 4. **A katapult mindkét oldalon szerepel** nála (a támadó és a védő listában is),
    tehát ugyanaz a populáció kétszer számít.
@@ -98,15 +98,15 @@ a támadó oldalon.
 ## Ha több sortípus van bekapcsolva
 
 Az egység-áttekintőben egy faluhoz több sor is tartozhat („saját csapatok",
-„a faluban – idegennel együtt", „úton lévők"). Ilyenkor a script **nem adja
-össze** őket — ez lenne a legkönnyebb módja annak, hogy ugyanaz a sereg
+„a faluban - idegennel együtt", „úton lévők"). Ilyenkor a script **nem adja
+össze** őket - ez lenne a legkönnyebb módja annak, hogy ugyanaz a sereg
 többször számítson, és hogy idegen támogatás sajátként kerüljön be. Helyette
 felismeri a sortípusokat, és a panelen **kiválasztható**, melyiket összegezze.
 Alapértelmezés az első sor.
 
 ## Mit nem csinál
 
-- nem küld sehova adatot — **egyetlen hálózati hívás sincs benne**
+- nem küld sehova adatot - **egyetlen hálózati hívás sincs benne**
 - nem automatizál játékbeli műveletet: nem küld csapatot, nem támad, nem
   támogat, nem nevez át, nem épít, nem kutat
 - nem fut magától, nincs benne időzítő, és nem figyel a fiók eseményeire
@@ -126,4 +126,4 @@ node teszt.mjs
 
 ## Licenc
 
-MIT — lásd [`LICENSE`](LICENSE).
+MIT - lásd [`LICENSE`](LICENSE).

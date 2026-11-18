@@ -4,7 +4,7 @@
  * Futtatás:  node teszt.mjs
  * (Nincs semmilyen függősége, nem kell npm install.)
  *
- * A VALÓDI forrást futtatjuk (klan-csapatosszesito.js), nem egy másolatát —
+ * A VALÓDI forrást futtatjuk (klan-csapatosszesito.js), nem egy másolatát -
  * egy minimális DOM-utánzaton. Így a táblázat-felismerés, a számformátumok
  * kezelése és a populáció-számítás ténylegesen tesztelve van.
  *
@@ -110,7 +110,7 @@ function futtat(tablak, mentett) {
     setItem: () => {},
   };
 
-  // A scriptet saját változókörnyezetben futtatjuk — ugyanaz a forrás,
+  // A scriptet saját változókörnyezetben futtatjuk - ugyanaz a forrás,
   // amit a játékos is betöltene.
   const fv = new Function('document', 'localStorage', 'alert', 'navigator', 'window', FORRAS);
   const ablak = {};
@@ -139,7 +139,7 @@ const fo = tablat([
   sor('Vedo', ['7.000', '7.000', '0', '0', '0', '0', '0', '2.000', '0', '0', '0', '0']),
   sor('Vegyes', ['3.000', '2.000', '3.500', '1.000', '20', '1.500', '0', '500', '150', '25', '1', '8']),
 ]);
-// Egy zavaró táblázat, amiben van kép, de nem egység — ezt nem szabad választania.
+// Egy zavaró táblázat, amiben van kép, de nem egység - ezt nem szabad választania.
 const zavaro = tablat([
   [{ textContent: 'Menü', kepek: ['https://x/graphic/buildings/main.png'] }],
   [{ textContent: 'Főhadiszállás', kepek: [] }],
@@ -163,7 +163,7 @@ console.log('\n=== A VEGYES FALU: EZT RONTJA EL A DARABOLÓS MÓDSZER ===');
 s = sorbol(v.panelHtml, 'Vegyes');
 // 3500 bárdos + 1500·4 lovas + 150·5 kos + 25·8 katapult = 3500+6000+750+200 = 10 450
 all(tiszta(s[3]) === '10450', `támadó pop 10 450 (kapott: ${s[3]})`);
-all(s[0] === '0.5', 'ez fél nuke — nem 0 és nem 1');
+all(s[0] === '0.5', 'ez fél nuke - nem 0 és nem 1');
 all(s[1] === '2', '8 nemes = 2 vonat');
 
 console.log('\n=== SZÁMFORMÁTUMOK ===');
@@ -175,7 +175,7 @@ v = futtat([tablat([
   sor('Ures', ['0', '0', '-', '0', '0', '0', '0', '0', '0', '0', '0', '0']),
 ])]);
 // A magyar helyesírás a négyjegyű számot szóköz NÉLKÜL írja (7000), ötjegyűtől
-// szóközzel (20 900) — a toLocaleString('hu-HU') pont ezt csinálja.
+// szóközzel (20 900) - a toLocaleString('hu-HU') pont ezt csinálja.
 all(tiszta(sorbol(v.panelHtml, 'Pontos')[3]) === '7000', 'pontos ezres elválasztó (7.000)');
 all(tiszta(sorbol(v.panelHtml, 'Szokozos')[3]) === '7000', 'szóközös ezres elválasztó (7 000)');
 all(tiszta(sorbol(v.panelHtml, 'Vesszos')[3]) === '7000', 'vesszős ezres elválasztó (7,000)');

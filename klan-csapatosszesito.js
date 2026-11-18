@@ -1,5 +1,5 @@
 /*
- * Klán csapatösszesítő  —  v1.1.0
+ * Klán csapatösszesítő  -  v1.1.0
  * ---------------------------------------------------------------------------
  * Mit csinál:  a MÁR MEGNYITOTT csapatáttekintő táblázatát összeadja, és
  *              populáció (farm) alapján kiszámolja, mennyi támadó- és
@@ -11,7 +11,7 @@
  *              = egy összesítés a képernyőn. Utána nem csinál többet semmit.
  *
  * Miért kell:  a vezetőnek ma kézzel kell összeadnia 12 oszlopot sok száz
- *              soron, vagy a tagok bediktálják a számokat — mindkettő hibázik.
+ *              soron, vagy a tagok bediktálják a számokat - mindkettő hibázik.
  *              Ez a script ugyanazt az adatot adja össze, ami már ott van a
  *              képernyőn.
  *
@@ -24,7 +24,7 @@
  *   - a forráskód nincs elfedve: olvasható, kommentezett, tömörítetlen.
  *
  * A vágólapra másolás CSAK a felhasználó kattintására történik, és a saját
- * gépén marad — a script semmilyen hálózati hívást nem végez.
+ * gépén marad - a script semmilyen hálózati hívást nem végez.
  *
  * Licenc: szabadon használható és ellenőrizhető.
  */
@@ -60,7 +60,7 @@
    *
    * A katapult SZÁNDÉKOSAN csak a támadó oldalon szerepel. Több elterjedt
    * összesítő mindkét listába beteszi, és így ugyanazt a populációt kétszer
-   * számolja — attól a védőszám felfelé hazudik.
+   * számolja - attól a védőszám felfelé hazudik.
    *
    * A felderítő, a lovag és a nemes egyikbe sem tartozik: a felderítő nem
    * harcol, a lovag egyedi, a nemes pedig külön számít (vonat). Ezeket külön
@@ -315,7 +315,7 @@
    * 5) Számítás
    *
    * Populáció-összegzés, utána osztás. NEM kategorizálunk falvanként: ha
-   * valakinek két fél nuke-ja van, az egy egész — a darabolós módszer ezt
+   * valakinek két fél nuke-ja van, az egy egész - a darabolós módszer ezt
    * vagy elveszti, vagy kétszer számolja.
    * ------------------------------------------------------------------- */
   function popOsszeg(egysegek, lista) {
@@ -393,14 +393,14 @@
      * egy faluhoz. Így sosem adunk össze kétszer ugyanazt. */
     if (adat.sortipusok && adat.sortipusok.length > 1) {
       html += '<div style="margin:8px 0;padding:6px;background:#f6e0c0;border:1px solid #c1a264;">';
-      html += '<b>Több sortípus van bekapcsolva</b> — egy faluhoz ' + adat.sortipusok.length +
+      html += '<b>Több sortípus van bekapcsolva</b> - egy faluhoz ' + adat.sortipusok.length +
               ' sor tartozik. Csak az alább kiválasztott sort számolom, hogy ne adódjon össze kétszer ' +
               'ugyanaz a sereg (és ne kerüljön bele idegen támogatás).<br>';
       html += 'Számolt sor: <select id="kcs_sor">';
       for (var p = 0; p < adat.sortipusok.length; p++) {
         var nev = adat.sortipusok[p] ? szoveg(adat.sortipusok[p]) : (p + 1) + '. sor';
         html += '<option value="' + p + '"' + (p === adat.sorPozicio ? ' selected' : '') + '>' +
-                (p + 1) + '. — ' + nev + '</option>';
+                (p + 1) + '. - ' + nev + '</option>';
       }
       html += '</select> <button id="kcs_sorujra" style="cursor:pointer;">Újraszámol</button>';
       html += '</div>';
@@ -439,7 +439,7 @@
       'A számítás populáció alapján megy: minden egység a játékbeli farm-helyével súlyozva. ' +
       'A felderítő, a lovag és a nemes nincs beleszámítva sem a támadó, sem a védő összegbe; ' +
       'a katapult csak a támadó oldalon szerepel. ' +
-      'A script nem küld sehova adatot és nem végez semmilyen játékbeli műveletet — ' +
+      'A script nem küld sehova adatot és nem végez semmilyen játékbeli műveletet - ' +
       'csak azt adja össze, ami ezen a lapon amúgy is látszik.' +
       '</div>';
 
@@ -475,7 +475,7 @@
       var sz = tsv(eredmeny);
       masol(sz, function (ok) {
         document.getElementById('kcs_uzenet').textContent =
-          ok ? 'Kimásolva.' : 'A vágólap nem elérhető – jelöld ki a táblázatot kézzel.';
+          ok ? 'Kimásolva.' : 'A vágólap nem elérhető - jelöld ki a táblázatot kézzel.';
       });
     };
   }
@@ -519,7 +519,7 @@
   }
 
   /* ---------------------------------------------------------------------
-   * 8) Indítás — ez az EGY kattintás, amit a script helyettesít
+   * 8) Indítás - ez az EGY kattintás, amit a script helyettesít
    * ------------------------------------------------------------------- */
   function futtat() {
     var b = beallitasok();
